@@ -1,0 +1,142 @@
+
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>Gold & Silver Live Prices + Separate Charts + Alerts</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{
+  font-family: Arial;
+  background:#111;
+  color:white;
+  margin:20px;
+}
+h1{color:gold; text-align:center;}
+.card{
+  display: flex;
+  justify-content: space-between;
+  background:#1c1c1c;
+  padding:15px 20px;
+  margin:10px 0;
+  border-radius:12px;
+  font-size:20px;
+}
+canvas{
+  background:#1c1c1c;
+  border-radius:12px;
+  margin-top:20px;
+}
+button{
+  display:block;
+  margin:15px auto;
+  padding:10px 20px;
+  border:none;
+  border-radius:8px;
+  background:gold;
+  color:#111;
+  cursor:pointer;
+}
+button:hover{ background:#ffda4d; }
+#time{ text-align:center; margin-top:10px; }
+</style>
+</head>
+<body>
+
+<h1>📈 قیمت لحظه‌ای طلا و نقره جهانی</h1>
+
+<div class="card"><span>🥇 اونس طلا (XAU):</span><span id="goldOunce">...</span></div>
+<div class="card"><span>🪙 گرم طلای 24 عیار:</span><span id="gold24">...</span></div>
+<div class="card"><span>🪙 گرم طلای 18 عیار:</span><span id="gold18">...</span></div>
+<div class="card"><span>🥈 اونس نقره (XAG):</span><span id="silverOunce">...</span></div>
+<div class="card"><span>🥈 گرم نقره:</span><span id="silverGram">...</span></div>
+
+<div id="time"></div>
+<button onclick="updateData()">🔄 بروزرسانی دستی</button>
+
+<h2>نمودار اونس طلا</h2>
+<canvas id="goldChart" width="400" height="200"></canvas>
+
+<h2>نمودار اونس نقره</h2>
+<canvas id="silverChart" width="400" height="200"></canvas>
+
+<script>
+let goldAlertPrice = 2000;
+let silverAlertPrice = 25;
+if ("Notification" in window) { Notification.requestPermission(); }
+
+let goldLabels=[], goldData=[];
+let silverLabels=[], silverData=[];
+let goldChart, silverChart;
+
+function createGoldChart(){
+  const ctx = document.getElementById('goldChart').getContext('2d');
+  goldChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels:goldLabels, datasets:[{label:'اونس طلا',data:goldData,borderColor:'gold',backgroundColor:'rgba(255,215,0,0.2)',tension:0.3}]},
+    options:{responsive:true,scales:{x:{ticks:{color:'white'}},y:{ticks:{color:'white'},beginAtZero:false}}}
+  });
+}
+
+function createSilverChart(){
+  const ctx = document.getElementById('silverChart').getContext('2d');
+  silverChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels:silverLabels, datasets:[{label:'اونس نقره',data:silverData,borderColor:'silver',backgroundColor:'rgba(192,192,192,0.2)',tension:0.3}]},
+    options:{responsive:true,scales:{x:{ticks:{color:'white'}},y:{ticks:{color:'white'},beginAtZero:false}}}
+  });
+}
+
+async function updateData(){
+  try{
+    const goldRes = await fetch("https://api.gold-api.com/price/XAU");
+    const silverRes = await fetch("https://api.gold-api.com/price/XAG");
+    const goldJson = await goldRes.json();
+    const silverJson = await silverRes.json();
+
+    const goldOunce = goldJson.price;
+    const silverOunce = silverJson.price;
+
+    const gold24 = goldOunce/31.103;
+    const gold18 = gold24*0.75;
+    const silverGram = silverOunce/31.103;
+
+    document.getElementById("goldOunce").innerText = goldOunce.toFixed(2);
+    document.getElementById("gold24").innerText = gold24.toFixed(2);
+    document.getElementById("gold18").innerText = gold18.toFixed(2);
+    document.getElementById("silverOunce").innerText = silverOunce.toFixed(2);
+    document.getElementById("silverGram").innerText = silverGram.toFixed(2);
+
+    const now = new Date().toLocaleTimeString();
+    document.getElementById("time").innerText = "آخرین بروزرسانی: " + now;
+
+    goldLabels.push(now);
+    goldData.push(goldOunce);
+    if(goldLabels.length>20){ goldLabels.shift(); goldData.shift(); }
+    goldChart.update();
+
+    silverLabels.push(now);
+    silverData.push(silverOunce);
+    if(silverLabels.length>20){ silverLabels.shift(); silverData.shift(); }
+    silverChart.update();
+
+    if ("Notification" in window && Notification.permission==="granted"){
+      if(goldOunce >= goldAlertPrice){
+        new Notification("⚠️ هشدار طلا",{body:`اونس طلا به ${goldOunce.toFixed(2)} $ رسید!`});
+      }
+      if(silverOunce >= silverAlertPrice){
+        new Notification("⚠️ هشدار نقره",{body:`اونس نقره به ${silverOunce.toFixed(2)} $ رسید!`});
+      }
+    }
+
+  } catch(e){ console.error(e); document.getElementById("time").innerText="خطا در دریافت قیمت‌ها"; }
+}
+
+createGoldChart();
+createSilverChart();
+updateData();
+setInterval(updateData,15000);
+</script>
+
+</body>
+</html>
