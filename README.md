@@ -1,2 +1,2 @@
-# gold-silver-app
+index.html
 goldsilver
